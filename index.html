@@ -212,8 +212,8 @@
             gunImg.onerror = function() { log('ERROR: vandal1.png failed to load!'); };
             if (gunImg.complete && gunImg.naturalWidth > 0) { log('Gun already cached'); init(); }
 
-            /* Opacity per kill level — slightly higher since glow is the primary effect */
-            var OPACITY = [0, 0.04, 0.07, 0.10, 0.14, 0.18];
+            /* Opacity per kill level */
+            var OPACITY = [0, 0.6, 0.7, 0.8, 0.9, 1.0];
 
             function applyGlow(kills) {
                 currentLevel = kills;
