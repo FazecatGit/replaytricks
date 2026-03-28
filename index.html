@@ -15,35 +15,46 @@
                 position: absolute;
                 top: 0; left: 0;
                 width: 1920px; height: 1080px;
-                mix-blend-mode: screen;
                 opacity: 0;
                 transition: opacity 0.5s ease;
                 pointer-events: none;
             }
 
-            /* One orbit animation — hue cycles as the hotspot rotates around the gun */
-            @keyframes orbit {
-                0%   { filter: drop-shadow( 80px   0px 14px hsl(  0,100%,72%)) drop-shadow(0 0 40px hsl(  0,100%,55%)); }
-                12%  { filter: drop-shadow( 57px  57px 14px hsl( 45,100%,72%)) drop-shadow(0 0 40px hsl( 45,100%,55%)); }
-                25%  { filter: drop-shadow(  0px  80px 14px hsl( 90,100%,72%)) drop-shadow(0 0 40px hsl( 90,100%,55%)); }
-                37%  { filter: drop-shadow(-57px  57px 14px hsl(135,100%,72%)) drop-shadow(0 0 40px hsl(135,100%,55%)); }
-                50%  { filter: drop-shadow(-80px   0px 14px hsl(180,100%,72%)) drop-shadow(0 0 40px hsl(180,100%,55%)); }
-                62%  { filter: drop-shadow(-57px -57px 14px hsl(225,100%,72%)) drop-shadow(0 0 40px hsl(225,100%,55%)); }
-                75%  { filter: drop-shadow(  0px -80px 14px hsl(270,100%,72%)) drop-shadow(0 0 40px hsl(270,100%,55%)); }
-                87%  { filter: drop-shadow( 57px -57px 14px hsl(315,100%,72%)) drop-shadow(0 0 40px hsl(315,100%,55%)); }
-                100% { filter: drop-shadow( 80px   0px 14px hsl(360,100%,72%)) drop-shadow(0 0 40px hsl(360,100%,55%)); }
+            /* Gun image pushed off-screen — body overflow:hidden clips it,
+               but the drop-shadow (offset -1080px back up) stays visible */
+            #glow img {
+                display: block;
+                width: 1920px; height: 1080px;
+                transform: translateY(1080px);
             }
 
-            /* Per-kill intensity: speed increases, opacity rises */
-            body.k1 #glow { opacity: 0.55; animation: orbit 4.0s linear infinite; }
-            body.k2 #glow { opacity: 0.70; animation: orbit 3.0s linear infinite; }
-            body.k3 #glow { opacity: 0.82; animation: orbit 2.0s linear infinite; }
-            body.k4 #glow { opacity: 0.92; animation: orbit 1.3s linear infinite; }
-            body.k5 #glow { opacity: 1.00; animation: orbit 0.8s linear infinite; }
+            /* Red electrifying orbit — hotspot circling the gun outline
+               Shadow offsets orbit around (0, -1080) to compensate for translateY
+               4 stacked shadows: white-hot core, bright red, wide red glow, ambient outline */
+            @keyframes electrify {
+                0%    { filter: drop-shadow(100px -1080px 2px #fff)   drop-shadow(100px -1080px 10px #ff1a1a)  drop-shadow(100px -1080px 30px #aa0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                12.5% { filter: drop-shadow( 71px -1009px 3px #ffe0e0) drop-shadow( 71px -1009px 12px #ff2020)  drop-shadow( 71px -1009px 35px #bb0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                25%   { filter: drop-shadow(  0px  -980px 2px #fff)   drop-shadow(  0px  -980px 10px #ff1a1a)  drop-shadow(  0px  -980px 30px #aa0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                37.5% { filter: drop-shadow(-71px -1009px 4px #ffe8e8) drop-shadow(-71px -1009px 14px #ff3030)  drop-shadow(-71px -1009px 38px #cc0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                50%   { filter: drop-shadow(-100px -1080px 2px #fff)   drop-shadow(-100px -1080px 10px #ff1a1a)  drop-shadow(-100px -1080px 30px #aa0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                62.5% { filter: drop-shadow(-71px -1151px 3px #ffe0e0) drop-shadow(-71px -1151px 12px #ff2020)  drop-shadow(-71px -1151px 35px #bb0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                75%   { filter: drop-shadow(  0px -1180px 2px #fff)   drop-shadow(  0px -1180px 10px #ff1a1a)  drop-shadow(  0px -1180px 30px #aa0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                87.5% { filter: drop-shadow( 71px -1151px 4px #ffe8e8) drop-shadow( 71px -1151px 14px #ff3030)  drop-shadow( 71px -1151px 38px #cc0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+                100%  { filter: drop-shadow(100px -1080px 2px #fff)   drop-shadow(100px -1080px 10px #ff1a1a)  drop-shadow(100px -1080px 30px #aa0000)  drop-shadow(0px -1080px 15px rgba(255,20,20,0.35)); }
+            }
+
+            /* Per-kill: faster orbit, higher opacity, subtle flicker */
+            body.k1 #glow { opacity: 0.55; animation: electrify 4.0s linear infinite; }
+            body.k2 #glow { opacity: 0.70; animation: electrify 3.0s linear infinite; }
+            body.k3 #glow { opacity: 0.82; animation: electrify 2.0s linear infinite; }
+            body.k4 #glow { opacity: 0.92; animation: electrify 1.3s linear infinite; }
+            body.k5 #glow { opacity: 1.00; animation: electrify 0.8s linear infinite; }
         </style>
     </head>
     <body>
-        <img id="glow" src="vandal1.png" />
+        <div id="glow">
+            <img src="vandal1.png" />
+        </div>
 
         <script>
             var k = 0;
