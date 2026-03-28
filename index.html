@@ -16,6 +16,7 @@
                 top: 0; left: 0;
                 width: 1920px; height: 1080px;
                 opacity: 0;
+                mix-blend-mode: screen;
                 transition: opacity 0.5s ease;
                 pointer-events: none;
             }
@@ -28,45 +29,39 @@
                 transform: translateY(1080px);
             }
 
-            /* Red electrifying pulse — stationary on the gun outline, tight/inner blur.
-               Shadow stays at 0, -1080 to compensate for translateY — no positional movement.
-               Blur and brightness pulse to create an electric throb effect. */
+            /* Pulse at ~45 BPM base (1.33s). Each kill:
+               - Layer 1: 2px blur  — tight inner/outer edge ring
+               - Layer 2: 4px blur  — the ~4px in / 4px out zone
+               - Layer 3: 18-22px   — gaussian-feathered aura, ease-in bloom
+               mix-blend-mode: screen means black = transparent; glow adds to footage */
 
-            /* Kill 1: dim, slow pulse — dark red */
             @keyframes pulse1 {
-                0%,100% { filter: drop-shadow(0 -1080px 3px rgba(180,0,0,0.6))  drop-shadow(0 -1080px 7px rgba(140,0,0,0.3)); }
-                50%     { filter: drop-shadow(0 -1080px 5px rgba(200,10,10,0.8)) drop-shadow(0 -1080px 10px rgba(160,0,0,0.4)); }
+                0%,100% { filter: drop-shadow(0 -1080px 2px rgba(160,0,0,0.20)) drop-shadow(0 -1080px 4px rgba(120,0,0,0.10)) drop-shadow(0 -1080px 18px rgba(100,0,0,0.05)); }
+                50%     { filter: drop-shadow(0 -1080px 2px rgba(200,20,20,0.32)) drop-shadow(0 -1080px 4px rgba(165,0,0,0.16)) drop-shadow(0 -1080px 18px rgba(130,0,0,0.08)); }
             }
-            /* Kill 2: brighter, tighter */
             @keyframes pulse2 {
-                0%,100% { filter: drop-shadow(0 -1080px 3px rgba(220,15,15,0.7))  drop-shadow(0 -1080px 7px rgba(180,0,0,0.35)); }
-                50%     { filter: drop-shadow(0 -1080px 5px rgba(240,30,30,0.9))  drop-shadow(0 -1080px 10px rgba(200,10,10,0.5)); }
+                0%,100% { filter: drop-shadow(0 -1080px 2px rgba(195,10,10,0.30)) drop-shadow(0 -1080px 4px rgba(155,0,0,0.15)) drop-shadow(0 -1080px 18px rgba(120,0,0,0.07)); }
+                50%     { filter: drop-shadow(0 -1080px 2px rgba(235,30,30,0.45)) drop-shadow(0 -1080px 4px rgba(200,10,10,0.24)) drop-shadow(0 -1080px 19px rgba(150,0,0,0.11)); }
             }
-            /* Kill 3: vivid red, white-hot edge starts appearing */
             @keyframes pulse3 {
-                0%,100% { filter: drop-shadow(0 -1080px 2px rgba(255,200,200,0.5)) drop-shadow(0 -1080px 4px rgba(255,30,30,0.8))  drop-shadow(0 -1080px 8px rgba(200,0,0,0.4)); }
-                50%     { filter: drop-shadow(0 -1080px 3px rgba(255,230,230,0.7)) drop-shadow(0 -1080px 6px rgba(255,50,50,1.0))  drop-shadow(0 -1080px 11px rgba(220,0,0,0.55)); }
+                0%,100% { filter: drop-shadow(0 -1080px 2px rgba(225,20,20,0.40)) drop-shadow(0 -1080px 4px rgba(185,0,0,0.22)) drop-shadow(0 -1080px 19px rgba(140,0,0,0.09)); }
+                50%     { filter: drop-shadow(0 -1080px 2px rgba(255,45,45,0.58)) drop-shadow(0 -1080px 4px rgba(220,10,10,0.34)) drop-shadow(0 -1080px 20px rgba(170,0,0,0.14)); }
             }
-            /* Kill 4: intense, tight white core + red */
             @keyframes pulse4 {
-                0%,100% { filter: drop-shadow(0 -1080px 2px rgba(255,220,220,0.7)) drop-shadow(0 -1080px 4px rgba(255,40,40,0.9))  drop-shadow(0 -1080px 8px rgba(220,0,0,0.5)); }
-                33%     { filter: drop-shadow(0 -1080px 3px rgba(255,255,255,0.9)) drop-shadow(0 -1080px 5px rgba(255,60,60,1.0))  drop-shadow(0 -1080px 10px rgba(240,10,10,0.65)); }
-                66%     { filter: drop-shadow(0 -1080px 1px rgba(255,180,180,0.6)) drop-shadow(0 -1080px 3px rgba(255,35,35,0.85)) drop-shadow(0 -1080px 7px rgba(210,0,0,0.45)); }
+                0%,100% { filter: drop-shadow(0 -1080px 1px rgba(255,200,200,0.30)) drop-shadow(0 -1080px 3px rgba(250,30,30,0.50)) drop-shadow(0 -1080px 4px rgba(200,0,0,0.28)) drop-shadow(0 -1080px 20px rgba(160,0,0,0.12)); }
+                50%     { filter: drop-shadow(0 -1080px 1px rgba(255,230,230,0.50)) drop-shadow(0 -1080px 3px rgba(255,55,55,0.70)) drop-shadow(0 -1080px 5px rgba(220,10,10,0.44)) drop-shadow(0 -1080px 21px rgba(180,0,0,0.17)); }
             }
-            /* Kill 5: max vibrancy, electric flicker, white-hot core */
             @keyframes pulse5 {
-                0%,100% { filter: drop-shadow(0 -1080px 2px #fff)                  drop-shadow(0 -1080px 4px rgba(255,50,50,1.0))  drop-shadow(0 -1080px 9px rgba(240,0,0,0.6)); }
-                25%     { filter: drop-shadow(0 -1080px 1px rgba(255,200,200,0.7)) drop-shadow(0 -1080px 3px rgba(255,30,30,0.85)) drop-shadow(0 -1080px 7px rgba(210,0,0,0.4)); }
-                50%     { filter: drop-shadow(0 -1080px 3px #fff)                  drop-shadow(0 -1080px 5px rgba(255,60,60,1.0))  drop-shadow(0 -1080px 10px rgba(255,10,10,0.7)); }
-                75%     { filter: drop-shadow(0 -1080px 1px rgba(255,180,180,0.6)) drop-shadow(0 -1080px 4px rgba(255,45,45,0.9))  drop-shadow(0 -1080px 8px rgba(230,0,0,0.5)); }
+                0%,100% { filter: drop-shadow(0 -1080px 1px rgba(255,215,215,0.45)) drop-shadow(0 -1080px 3px rgba(255,40,40,0.65)) drop-shadow(0 -1080px 5px rgba(220,0,0,0.40)) drop-shadow(0 -1080px 21px rgba(170,0,0,0.14)); }
+                50%     { filter: drop-shadow(0 -1080px 1px #fff)                   drop-shadow(0 -1080px 3px rgba(255,65,65,0.85)) drop-shadow(0 -1080px 5px rgba(240,10,10,0.58)) drop-shadow(0 -1080px 22px rgba(200,0,0,0.20)); }
             }
 
-            /* Per-kill: each uses its own animation with increasing vibrancy and speed */
-            body.k1 #glow { opacity: 0.65; animation: pulse1 2.0s ease-in-out infinite; }
-            body.k2 #glow { opacity: 0.75; animation: pulse2 1.6s ease-in-out infinite; }
-            body.k3 #glow { opacity: 0.85; animation: pulse3 1.2s ease-in-out infinite; }
-            body.k4 #glow { opacity: 0.92; animation: pulse4 0.8s ease-in-out infinite; }
-            body.k5 #glow { opacity: 1.00; animation: pulse5 0.5s ease-in-out infinite; }
+            /* 45 BPM base = 1.33s; ramps to ~67 BPM at k5. Opacity scales vibrancy. */
+            body.k1 #glow { opacity: 0.60; animation: pulse1 1.33s ease-in-out infinite; }
+            body.k2 #glow { opacity: 0.72; animation: pulse2 1.20s ease-in-out infinite; }
+            body.k3 #glow { opacity: 0.82; animation: pulse3 1.10s ease-in-out infinite; }
+            body.k4 #glow { opacity: 0.92; animation: pulse4 1.00s ease-in-out infinite; }
+            body.k5 #glow { opacity: 1.00; animation: pulse5 0.90s ease-in-out infinite; }
         </style>
     </head>
     <body>
