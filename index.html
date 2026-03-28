@@ -1,0 +1,230 @@
+﻿<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                width: 1920px;
+                height: 1080px;
+                background: transparent;
+                overflow: hidden;
+            }
+            #aura {
+                position: absolute;
+                top: 0; left: 0;
+                width: 1920px; height: 1080px;
+                opacity: 0;
+                transition: opacity 0.5s ease;
+                mix-blend-mode: screen;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="aura" width="1920" height="1080"></canvas>
+        <img id="gun-img" src="vandal1.png" style="position:absolute;top:-9999px;left:-9999px;width:1920px;height:1080px;" />
+
+        <script>
+            var W = 1920, H = 1080;
+            var canvas = document.getElementById('aura');
+            var ctx = canvas.getContext('2d');
+            var gunImg = document.getElementById('gun-img');
+            function log(msg) { console.log(msg); }
+
+            /* 1/2 scale for higher quality masks */
+            var S = 2;
+            var sw = W / S, sh = H / S;
+            var silhouette = null;
+
+            /* Pre-built ring mask CANVASES per kill (used with compositing — no per-pixel loop) */
+            var ringCanvases = [null, null, null, null, null, null];
+
+            /* Ring radii per kill (in half-res px, x2 = full-res px) */
+            var RADII = [0, 1, 2, 3, 4, 5];
+
+            /* Gun centroid (computed from silhouette) — used as orbit center for pulse */
+            var gunCX = W / 2, gunCY = H / 2;
+
+            /* Offscreen canvas for the glow pulse (reused each frame — avoids GC churn) */
+            var glowCanvas = document.createElement('canvas');
+            glowCanvas.width = W; glowCanvas.height = H;
+            var glowCtx = glowCanvas.getContext('2d');
+
+            function buildSilhouette() {
+                var tmp = document.createElement('canvas');
+                tmp.width = sw; tmp.height = sh;
+                var tCtx = tmp.getContext('2d', { willReadFrequently: true });
+                tCtx.drawImage(gunImg, 0, 0, sw, sh);
+                var px = tCtx.getImageData(0, 0, sw, sh).data;
+                silhouette = new Uint8Array(sw * sh);
+                var cx = 0, cy = 0, count = 0;
+                for (var i = 0; i < sw * sh; i++) {
+                    var r = px[i*4], g = px[i*4+1], b = px[i*4+2], a = px[i*4+3];
+                    if (a > 20 && !(r > 230 && g > 230 && b > 230)) {
+                        silhouette[i] = 1;
+                        cx += (i % sw);
+                        cy += Math.floor(i / sw);
+                        count++;
+                    }
+                }
+                /* Compute centroid of gun silhouette (half-res → scale to full-res) */
+                if (count > 0) {
+                    gunCX = (cx / count) * S;
+                    gunCY = (cy / count) * S;
+                }
+            }
+
+            function dilate(sil, R) {
+                var tmp = new Uint8Array(sw * sh);
+                var out = new Uint8Array(sw * sh);
+                for (var y = 0; y < sh; y++) {
+                    for (var x = 0; x < sw; x++) {
+                        var v = 0;
+                        for (var dx = Math.max(0, x - R); dx <= Math.min(sw - 1, x + R); dx++) {
+                            if (sil[y * sw + dx]) { v = 1; break; }
+                        }
+                        tmp[y * sw + x] = v;
+                    }
+                }
+                for (var y = 0; y < sh; y++) {
+                    for (var x = 0; x < sw; x++) {
+                        var v = 0;
+                        for (var dy = Math.max(0, y - R); dy <= Math.min(sh - 1, y + R); dy++) {
+                            if (tmp[dy * sw + x]) { v = 1; break; }
+                        }
+                        out[y * sw + x] = v;
+                    }
+                }
+                return out;
+            }
+
+            function erode(sil, R) {
+                /* Erosion = invert → dilate → invert */
+                var inv = new Uint8Array(sw * sh);
+                for (var i = 0; i < sw * sh; i++) inv[i] = sil[i] ? 0 : 1;
+                var d = dilate(inv, R);
+                var out = new Uint8Array(sw * sh);
+                for (var i = 0; i < sw * sh; i++) out[i] = d[i] ? 0 : 1;
+                return out;
+            }
+
+            /* Build ring mask as a CANVAS (not ImageData) for fast compositing */
+            function buildRingCanvas(level) {
+                var R = RADII[level];
+                var dilated = dilate(silhouette, R);
+                var eroded  = erode(silhouette, R);
+
+                var smallC = document.createElement('canvas');
+                smallC.width = sw; smallC.height = sh;
+                var sCtx = smallC.getContext('2d');
+                var sImg = sCtx.createImageData(sw, sh);
+                for (var i = 0; i < sw * sh; i++) {
+                    /* outer ring: R px outside outline; inner ring: R px inside outline */
+                    var outer = dilated[i] && !silhouette[i];
+                    var inner = silhouette[i] && !eroded[i];
+                    var ring = (outer || inner) ? 255 : 0;
+                    sImg.data[i*4] = 255;
+                    sImg.data[i*4+1] = 255;
+                    sImg.data[i*4+2] = 255;
+                    sImg.data[i*4+3] = ring;
+                }
+                sCtx.putImageData(sImg, 0, 0);
+
+                /* Scale up to full res with smoothing */
+                var fullC = document.createElement('canvas');
+                fullC.width = W; fullC.height = H;
+                var fCtx = fullC.getContext('2d');
+                fCtx.imageSmoothingEnabled = true;
+                fCtx.imageSmoothingQuality = 'high';
+                fCtx.drawImage(smallC, 0, 0, W, H);
+                /* Soft edges — 1px blur only; upscaling already smooths edges */
+                fCtx.filter = 'blur(1px)';
+                fCtx.globalCompositeOperation = 'copy';
+                fCtx.drawImage(fullC, 0, 0);
+                fCtx.filter = 'none';
+                fCtx.globalCompositeOperation = 'source-over';
+                return fullC;
+            }
+
+            function buildAllMasks() {
+                try {
+                    buildSilhouette();
+                    var gunPixels = 0;
+                    for (var i = 0; i < silhouette.length; i++) if (silhouette[i]) gunPixels++;
+                    if (gunPixels === 0) { log('ERROR: 0 gun pixels found — vandal1.png may be all-white or unreadable'); return; }
+                    for (var lv = 1; lv <= 5; lv++) {
+                        ringCanvases[lv] = buildRingCanvas(lv);
+                    }
+                    log('Masks built OK. Gun pixels: ' + gunPixels + ' | centroid: ' + Math.round(gunCX) + ', ' + Math.round(gunCY));
+                } catch(e) {
+                    log('MASK BUILD ERROR: ' + e.message);
+                }
+            }
+
+            var currentLevel = 0;
+            var k = 0;
+
+            /* FAST draw loop — animated glow pulse clipped to ring outline */
+            function draw() {
+                ctx.clearRect(0, 0, W, H);
+                if (currentLevel > 0 && ringCanvases[currentLevel]) {
+                    var t = Date.now() / 1000;
+                    /* Pulse hotspot orbits around the gun centroid */
+                    var angle = t * 1.4;
+                    var orbitR = 320;
+                    var hx = gunCX + Math.cos(angle) * orbitR;
+                    var hy = gunCY + Math.sin(angle) * orbitR;
+                    var hue = (t * 45) % 360;
+
+                    /* Draw gaussian-blurred radial gradient onto offscreen canvas */
+                    glowCtx.clearRect(0, 0, W, H);
+                    glowCtx.save();
+                    glowCtx.filter = 'blur(35px)';
+                    var grd = glowCtx.createRadialGradient(hx, hy, 0, hx, hy, 700);
+                    grd.addColorStop(0,    'hsla(' + hue + ', 100%, 88%, 1.0)');
+                    grd.addColorStop(0.25, 'hsla(' + ((hue + 30) % 360) + ', 100%, 65%, 0.7)');
+                    grd.addColorStop(1,    'hsla(' + ((hue + 60) % 360) + ', 100%, 40%, 0)');
+                    glowCtx.fillStyle = grd;
+                    glowCtx.fillRect(0, 0, W, H);
+                    glowCtx.restore();
+
+                    /* Draw glow, then clip it to the ring outline shape */
+                    ctx.drawImage(glowCanvas, 0, 0);
+                    ctx.globalCompositeOperation = 'destination-in';
+                    ctx.drawImage(ringCanvases[currentLevel], 0, 0);
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+                requestAnimationFrame(draw);
+            }
+
+            function init() {
+                buildAllMasks();
+                k = parseInt(localStorage.getItem('killCount') || '0', 10);
+                var params = new URLSearchParams(window.location.search);
+                var action = params.get('action');
+                if (action === 'kill') { k = Math.min(k + 1, 5); localStorage.setItem('killCount', k); }
+                else if (action === 'reset') { k = 0; localStorage.setItem('killCount', k); }
+                applyGlow(k);
+                requestAnimationFrame(draw);
+            }
+
+            gunImg.onload = function() { log('Gun image loaded'); init(); };
+            gunImg.onerror = function() { log('ERROR: vandal1.png failed to load!'); };
+            if (gunImg.complete && gunImg.naturalWidth > 0) { log('Gun already cached'); init(); }
+
+            /* Opacity per kill level — slightly higher since glow is the primary effect */
+            var OPACITY = [0, 0.04, 0.07, 0.10, 0.14, 0.18];
+
+            function applyGlow(kills) {
+                currentLevel = kills;
+                canvas.style.opacity = kills === 0 ? '0' : String(OPACITY[kills]);
+                log('kill ' + kills);
+            }
+
+            window.addEventListener('keydown', function(e) {
+                if (e.key === 'k') { k = Math.min(k+1, 5); localStorage.setItem('killCount', k); applyGlow(k); }
+                if (e.key === 'r') { k = 0; localStorage.setItem('killCount', k); applyGlow(k); }
+            });
+        </script>
+    </body>
+</html>
